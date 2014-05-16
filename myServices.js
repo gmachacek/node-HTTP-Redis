@@ -1,5 +1,6 @@
 /**
  * Service module
+ * Stability: 3 - Stable
  */
 
 // Exports
