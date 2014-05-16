@@ -1,15 +1,16 @@
 
 
-# Testing node.js (HTTP server, file, JSON, Redis )
+# Testing node.js 
+Test1: HTTP server, file, JSON, Redis
 
 
 
 ## Usage
-HTTP server serves four tasks as following:
-1.pøijme HTTP GET poadavek na routì /track
-2.získá data pøedaná jako query string parametry volání
-3.uloí data do souboru na lokálním disku jako JSON (append)
-4.pokud se v datech vyskytuje parametr count, zvıší o jeho hodnotu poloku s klíèem 'count' v databázi Redis
+HTTP server serves four tasks as following:<br>
+1.pÅ™ijme HTTP GET poÅ¾adavek na routÄ› /track <br>
+2.zÃ­skÃ¡ data pÅ™edanÃ¡ jako query string parametry volÃ¡nÃ­<br>
+3.uloÅ¾Ã­ data do souboru na lokÃ¡lnÃ­m disku jako JSON (append)<br>
+4.pokud se v datech vyskytuje parametr count, zvÃ½Å¡Ã­ o jeho hodnotu poloÅ¾ku s klÃ­Äem 'count' v databÃ¡zi Redis<br>
 
 ## Developing
 
