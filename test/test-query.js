@@ -1,6 +1,6 @@
 /**
  * Unit tests
- * 
+ * Stability: 1 - Experimental
  */
 var server = require('../server');
 
