@@ -1,5 +1,5 @@
 /**
- * HTTP server
+ * HTTP server Stability: 3 - Stable
  */
 
 // --------------------------------------------------------------------------
@@ -16,7 +16,11 @@ exports.start = serverStart;
 exports.stop = serverStop;
 exports.serverHost = serverHost;
 exports.serverPort = serverPort;
+exports.logFileName = logFileName;
+exports.logFileDir = logFileDir;
 exports.getQueryString = getQueryString;
+exports.getCountQueryParameter = getCountQueryParameter;
+exports.saveData = saveData;
 
 // Imports
 var http = require("http");
@@ -33,11 +37,13 @@ var serverHost = "127.0.0.1";
 var serverPort = 1338;
 var logFileName = "queries.log";
 var logFileDir = process.cwd();
+//var logFileDir = "./";
 var redisDBPort = null;
 var redisDBHost = null;
 var httpServer;
 var redisClient;
 var isDebugMode = true;
+var isTestMode = true;
 
 // Entry point
 if (!module.parent) {
@@ -58,15 +64,23 @@ function syncErrorHandler(err) {
 // --------------------------------------------------------------------------
 // FUNCTION getQueryString
 // Params: queryString as String
-// Returns: URL Query String parameter as String
+// Returns: URL Query String parameter as String, if error returns false
 // Description:
 // --------------------------------------------------------------------------
 function getQueryString(uri) {
+
+    var queryStringAsStr;
     try {
-	return url.parse(uri).query;
+	queryStringAsStr = url.parse(uri).query;
+	if (typeof (queryStringAsStr) == "string") {
+	    return queryStringAsStr;
+	} else {
+	    return "";
+	}
+
     } catch (err) {
 	syncErrorHandler(err);
-	return;
+	return false;
     }
 }
 
@@ -80,49 +94,76 @@ function getQueryString(uri) {
 // saves(appends) it to local file specified in global variables logFileDir,
 // logFileName.
 // --------------------------------------------------------------------------
-function saveData(queryString) {
+function saveData(queryStringAsStr, callBack) {
 
-    var jsonString = "";
+    var queryStringAsObj = null;
+    var queryStringAsJSON = "";
     var filename = "";
+    
     try {
-	var queryObj = querystring.parse(queryString);
-	jsonString = JSON.stringify(queryObj) + "\n";
+	queryStringAsObj = querystring.parse(queryStringAsStr);
+	queryStringAsJSON = JSON.stringify(queryStringAsObj);
 	filename = path.join(logFileDir, logFileName);
     } catch (err) {
 	syncErrorHandler(err);
 	return;
     }
-    fs.appendFile(filename, jsonString, asyncErrorHandler);
-    return jsonString;
+    
+    if (typeof (callBack) == "undefined")
+	callBack = asyncErrorHandler;
+    
+    fs.appendFile(filename, queryStringAsJSON + "\n", callBack);
 }
 
+// --------------------------------------------------------------------------
+// FUNCTION getCountQueryParameter()
+// Params: queryString as String
+// Returns: Count value as Number
+// Throws: Raise Error when count value is NaN
+// Description:
+// --------------------------------------------------------------------------
+// Get queryString parameter, tests on 'Count' parameter containing,
+// if true then retrieves value as Number, otherwise return false.
+// --------------------------------------------------------------------------
+function getCountQueryParameter(queryStringAsStr) {
+
+    var queryStringAsObj = null;
+    var count = -1;
+
+    queryStringAsObj = querystring.parse(queryStringAsStr.toLowerCase());
+    if (typeof (queryStringAsObj.count) != "undefined") {
+	count = Number(queryStringAsObj.count);
+	if (isNaN(count)) {
+	    throw new Error('Count parameter is not a number');
+	} else {
+	    return count;
+	}
+    } else {
+	return false;
+    }
+
+}
 // --------------------------------------------------------------------------
 // FUNCTION updateCounter()
 // Params: queryString as String
 // Returns:
 // Description:
 // --------------------------------------------------------------------------
-// Get queryString parameter, tests on 'Count' parameter containing,
-// if yes then retrieves value as Number and saves it to database Redis as key
-// 'count' by incrementing previous key value.
+// When Count parameter exists in queryString, then 'count' item in Redis
+// database will be incrementing by its value.
 // --------------------------------------------------------------------------
-function updateCounter(queryString) {
-    var queryObj;
-    var count = -1;
+function updateCounter(queryStringAsStr) {
+    var count;
     try {
-	queryObj = querystring.parse(queryString.toLowerCase());
-	if (queryObj.count !== "") {
-	    count = Number(queryObj.count);
-	    if (isNaN(count)) {
-		return;
-	    }
-	} else {
-	    return;
-	}
+	count = getCountQueryParameter(queryStringAsStr);
     } catch (err) {
 	syncErrorHandler(err);
+	return;
     }
-    redisClient.INCRBY("count", count, asyncErrorHandler);
+
+    if (typeof (count) == "number") {
+	redisClient.INCRBY("count", count, asyncErrorHandler);
+    }
 }
 
 // --------------------------------------------------------------------------
@@ -142,7 +183,7 @@ function processRequest(request, response) {
 
     var queryString = getQueryString(request.url);
 
-    if (queryString) {
+    if (typeof (queryString) == "string" && queryString !== "") {
 	saveData(queryString);
 	updateCounter(queryString);
     }
@@ -186,7 +227,7 @@ function serverStart() {
 	service.displayErrorMsg(err.message);
     });
     redisClient.on("connect", function() {
-	service.displayInfoMsg("Redis client is connected to Redis server.")
+	service.displayInfoMsg("Redis client is connected to Redis server.");
     });
     redisClient.on("reconnecting", function(msg) {
 	service.displayInfoMsg("Redis server is connecting ... [" + msg.attempt + "]");
